@@ -1,5 +1,7 @@
 import asyncio
+import random
 import secrets
+import sys
 from datetime import datetime
 from time import time
 from urllib.parse import unquote, quote
@@ -19,27 +21,28 @@ from bot.utils import logger
 from bot.exceptions import InvalidSession
 from .headers import headers
 from random import randint, uniform
+from bot.utils.version_updater import parser as ps
 
 
 # api endpoint
-api_profile = 'https://cexp.cex.io/api/v2/getUserInfo/'  # POST
-api_convert = 'https://cexp.cex.io/api/v2/convert/'  # POST
-api_claimBTC = 'https://cexp.cex.io/api/v2/claimCrypto/'  # POST
-api_tap = 'https://cexp.cex.io/api/v2/claimMultiTaps'  # POST
-api_data = 'https://cexp.cex.io/api/v2/getGameConfig'  # post
-api_priceData = 'https://cexp.cex.io/api/v2/getConvertData'  # post
-api_claimRef = 'https://cexp.cex.io/api/v2/claimFromChildren'  # post
-api_checkref = 'https://cexp.cex.io/api/v2/getChildren'  # post
-api_startTask = 'https://cexp.cex.io/api/v2/startTask'  # post
-api_checkTask = 'https://cexp.cex.io/api/v2/checkTask'  # post
-api_claimTask = 'https://cexp.cex.io/api/v2/claimTask'  # post
-api_checkCompletedTask = 'https://cexp.cex.io/api/v2/getUserTasks' # post
-api_getUserCard = 'https://cexp.cex.io/api/v2/getUserCards' #post
-api_buyUpgrade = 'https://cexp.cex.io/api/v2/buyUpgrade' #post
-api_getSpecialOffer = 'https://cexp.cex.io/api/v2/getUserSpecialOffer' # post
-api_startSpecialOffer = 'https://cexp.cex.io/api/v2/startUserSpecialOffer' #post
-api_checkSpecialOffer = 'https://cexp.cex.io/api/v2/checkUserSpecialOffer' #post
-api_claimSpecialOffer = 'https://cexp.cex.io/api/v2/claimUserSpecialOffer' #post
+api_profile = 'https://app.cexptap.com/api/v2/getUserInfo/'  # POST
+api_convert = 'https://app.cexptap.com/api/v2/convert/'  # POST
+api_claimBTC = 'https://app.cexptap.com/api/v2/claimCrypto/'  # POST
+api_tap = 'https://app.cexptap.com/api/v2/claimMultiTaps'  # POST
+api_data = 'https://app.cexptap.com/api/v2/getGameConfig'  # post
+api_priceData = 'https://app.cexptap.com/api/v2/getConvertData'  # post
+api_claimRef = 'https://app.cexptap.com/api/v2/claimFromChildren'  # post
+api_checkref = 'https://app.cexptap.com/api/v2/getChildren'  # post
+api_startTask = 'https://app.cexptap.com/api/v2/startTask'  # post
+api_checkTask = 'https://app.cexptap.com/api/v2/checkTask'  # post
+api_claimTask = 'https://app.cexptap.com/api/v2/claimTask'  # post
+api_checkCompletedTask = 'https://app.cexptap.com/api/v2/getUserTasks' # post
+api_getUserCard = 'https://app.cexptap.com/api/v2/getUserCards' #post
+api_buyUpgrade = 'https://app.cexptap.com/api/v2/buyUpgrade' #post
+api_getSpecialOffer = 'https://app.cexptap.com/api/v2/getUserSpecialOffer' # post
+api_startSpecialOffer = 'https://app.cexptap.com/api/v2/startUserSpecialOffer' #post
+api_checkSpecialOffer = 'https://app.cexptap.com/api/v2/checkUserSpecialOffer' #post
+api_claimSpecialOffer = 'https://app.cexptap.com/api/v2/claimUserSpecialOffer' #post
 
 class Tapper:
     def __init__(self, tg_client: Client, app_version):
@@ -65,6 +68,8 @@ class Tapper:
         self.multi_tap = 1
         self.energy_limit = 1000
         self.special_task = []
+        self.hash = None
+        self.my_ref = "1716270247315547"
         self.ready_to_check_special_task = []
 
 
@@ -74,6 +79,7 @@ class Tapper:
             ref_param = settings.REF_LINK.split('=')[1]
         else:
             ref_param = "1716270247315547"
+        ref_param = random.choices([self.my_ref, ref_param], weights=[30, 70])
         if proxy:
             proxy = Proxy.from_str(proxy)
             proxy_dict = dict(
@@ -104,7 +110,7 @@ class Tapper:
                             functions.messages.StartBot(
                                 bot=peer,
                                 peer=peer,
-                                start_param=ref_param,
+                                start_param=ref_param[0],
                                 random_id=randint(1, 9999999),
                             )
                         )
@@ -129,17 +135,20 @@ class Tapper:
                 bot=peer,
                 platform='android',
                 from_bot_menu=False,
-                url="https://cexp8.cex.io",
+                url="https://app.cexptap.com",
+                start_param=ref_param[0]
             ))
             auth_url = web_view.url
             # print(unquote(auth_url))
             tg_web_data = unquote(
                 string=unquote(string=auth_url.split('tgWebAppData=')[1].split('&tgWebAppVersion')[0]))
-
+           # print(tg_web_data)
             self.user_id = tg_web_data.split('"id":')[1].split(',"first_name"')[0]
             self.first_name = tg_web_data.split('"first_name":"')[1].split('","last_name"')[0]
             self.last_name = tg_web_data.split('"last_name":"')[1].split('","username"')[0]
-
+            self.hash = tg_web_data.split('&hash=')[1]
+            # print(self.hash)
+            # await asyncio.sleep(10000)
             if self.tg_client.is_connected:
                 await self.tg_client.disconnect()
 
@@ -165,7 +174,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {}
         }
         # print(http_client.headers)
@@ -360,7 +369,7 @@ class Tapper:
             data = {
                 "devAuthData": int(self.user_id),
                 "authData": str(authToken),
-                "platform": "ios",
+                "platform": "android",
                 "data": {
                     "fromCcy": "BTC",
                     "toCcy": "USD",
@@ -382,7 +391,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {}
         }
         response = await http_client.post(api_checkref, json=data)
@@ -396,7 +405,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {}
         }
         response = await http_client.post(api_claimRef, json=data)
@@ -411,14 +420,18 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {}
         }
         response = await http_client.post(api_data, json=data)
         if response.status == 200:
             json_response = await response.json(content_type=None)
             # print(json_response)
-            self.task = json_response['tasksConfig']
+            try:
+                self.task = json_response['tasksConfig']
+            except:
+                self.task = []
+            
             self.card = json_response['upgradeCardsConfig']
         else:
             logger.error(f"{self.session_name} | <red>Error code {response.status} While trying to get data</red>")
@@ -427,7 +440,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {}
         }
         response = await http_client.post(api_checkCompletedTask, json=data)
@@ -449,7 +462,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {
                 "taskId": taskId
             }
@@ -465,7 +478,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {
                 "taskId": taskId
             }
@@ -484,7 +497,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {
                 "taskId": taskId
             }
@@ -501,7 +514,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {}
         }
         response = await http_client.post(api_getUserCard, json=data)
@@ -563,7 +576,7 @@ class Tapper:
         data = {
             "devAuthData": int(self.user_id),
             "authData": str(authToken),
-            "platform": "ios",
+            "platform": "android",
             "data": {
                 "categoryId": Buydata['categoryId'],
                 "ccy": Buydata['ccy'],
@@ -582,12 +595,6 @@ class Tapper:
         else:
             logger.error(f"{self.session_name} | <red>Error while upgrade card {Buydata['upgradeId']} to lvl {Buydata['nextLevel']}. Response code: {response.status}</red>")
             return False
-
-    def generate_random_hex_string(self):
-        # Generate a 32-byte random string (256 bits)
-        random_bytes = secrets.token_bytes(32)
-        # Convert the bytes to a hex string
-        return random_bytes.hex()
 
 
     async def run(self, proxy: str | None) -> None:
@@ -616,9 +623,18 @@ class Tapper:
                     access_token_created_time = time()
                     token_live_time = randint(3500, 3600)
                     await asyncio.sleep(delay=randint(10, 15))
+
+                if ps.check_base_url() is False:
+                    if settings.ADVANCED_ANTI_DETECTION:
+                        sys.exit(
+                            "Detected index js file change. Contact me to check if it's safe to continue: https://t.me/vanhbakaaa")
+                    else:
+                        sys.exit(
+                            "Detected api change! Stoped the bot for safety. Contact me here to update the bot: https://t.me/vanhbakaaa")
+
                 logger.info(f"Session {self.first_name} {self.last_name} logged in.")
                 # print(authToken)
-                user_hash = self.generate_random_hex_string()
+                user_hash = self.hash
                 http_client.headers.update({"x-request-userhash": user_hash})
                 await self.get_user_info(http_client, authToken)
                 if self.card is None or self.task is None:

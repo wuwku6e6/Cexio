@@ -21,7 +21,7 @@ start_text = """
 | |/ |/ / /_/ /| |/ |/ / ,< / /_/ / /_/ / /_/ / /_/ / 
 |__/|__/\__,_/ |__/|__/_/|_|\__,_/\____/\__,_/\____/  
                                                       
-CexIo BOT V 1.0 by: wuwku6a6                                                                                                     
+CexIo BOT V 1.1 by: wuwku6a6                                                                                                     
 
 Select an action:
 
